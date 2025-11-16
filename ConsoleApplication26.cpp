@@ -2,6 +2,7 @@
 #include <fstream>
 #include <string>
 #include <iomanip>
+#include <vector>
 using namespace std;
 
 // Структура для обычного двоичного дерева
@@ -23,7 +24,6 @@ struct AVLTree {
     AVLTree(int val) : data(val), left(nullptr), right(nullptr), height(1) {}
 };
 
-// Ручная реализация стека для BinaryTree (для итеративных обходов)
 struct BinaryTreeStack {
     BinaryTree** data;
     int capacity;
@@ -57,7 +57,6 @@ struct BinaryTreeStack {
     }
 };
 
-// Ручная реализация стека для AVLTree (для итеративных обходов)
 struct AVLTreeStack {
     AVLTree** data;
     int capacity;
@@ -91,7 +90,6 @@ struct AVLTreeStack {
     }
 };
 
-// Ручная реализация очереди для BinaryTree
 struct BinaryTreeQueue {
     BinaryTree** data;
     int capacity;
@@ -134,7 +132,6 @@ struct BinaryTreeQueue {
     }
 };
 
-// Ручная реализация очереди для AVLTree
 struct AVLTreeQueue {
     AVLTree** data;
     int capacity;
@@ -179,90 +176,318 @@ struct AVLTreeQueue {
 
 // Функции для обычного двоичного дерева
 
-// ТРИ ОБХОДА В ГЛУБИНУ (рекурсивные):
-void preorderTraversalBinary(BinaryTree* root) {
+void dfsBinaryTree(BinaryTree* root) {
     if (root == nullptr) return;
+
     cout << root->data << " ";
-    preorderTraversalBinary(root->left);
-    preorderTraversalBinary(root->right);
+    dfsBinaryTree(root->left);
+    dfsBinaryTree(root->right);
 }
 
-void inorderTraversalBinary(BinaryTree* root) {
-    if (root == nullptr) return;
-    inorderTraversalBinary(root->left);
-    cout << root->data << " ";
-    inorderTraversalBinary(root->right);
+void printBinaryTree(BinaryTree* root, int level = 0) {
+    if (root == nullptr) {
+        return;
+    }
+    printBinaryTree(root->right, level + 1);
+    cout << setw(level * 4) << "";
+    cout << "--> " << root->data << endl;
+    printBinaryTree(root->left, level + 1);
 }
 
-void postorderTraversalBinary(BinaryTree* root) {
+void collectPreOrder(BinaryTree* root, vector<int>& elements) {
     if (root == nullptr) return;
-    postorderTraversalBinary(root->left);
-    postorderTraversalBinary(root->right);
-    cout << root->data << " ";
+
+    elements.push_back(root->data);
+    collectPreOrder(root->left, elements);
+    collectPreOrder(root->right, elements);
 }
 
-// Парсинг скобочной записи дерева
+int countNodes(BinaryTree* root) {
+    if (root == nullptr) return 0;
+    return 1 + countNodes(root->left) + countNodes(root->right);
+}
+
+void deleteBinaryTree(BinaryTree* root) {
+    if (root == nullptr) return;
+
+    deleteBinaryTree(root->left);
+    deleteBinaryTree(root->right);
+    delete root;
+}
+
+// Функции для АВЛ дерева
+
+int getHeight(AVLTree* node) {
+    return node ? node->height : 0;
+}
+
+int max(int a, int b) {
+    return (a > b) ? a : b;
+}
+
+int getBalance(AVLTree* node) {
+    return node ? getHeight(node->left) - getHeight(node->right) : 0;
+}
+
+bool isBalanced(AVLTree* node) {
+    if (!node) return true;
+    int balance = getBalance(node);
+    return (balance >= -1 && balance <= 1) && isBalanced(node->left) && isBalanced(node->right);
+}
+
+void checkBalance(AVLTree* root) {
+    bool balanced = isBalanced(root);
+    cout << "Дерево " << (balanced ? "сбалансировано." : "несбалансировано.") << endl;
+}
+
+AVLTree* rightRotate(AVLTree* y) {
+    AVLTree* x = y->left;
+    AVLTree* T2 = x->right;
+
+    x->right = y;
+    y->left = T2;
+
+    y->height = max(getHeight(y->left), getHeight(y->right)) + 1;
+    x->height = max(getHeight(x->left), getHeight(x->right)) + 1;
+
+    return x;
+}
+
+AVLTree* leftRotate(AVLTree* x) {
+    AVLTree* y = x->right;
+    AVLTree* T2 = y->left;
+
+    y->left = x;
+    x->right = T2;
+
+    x->height = max(getHeight(x->left), getHeight(x->right)) + 1;
+    y->height = max(getHeight(y->left), getHeight(y->right)) + 1;
+
+    return y;
+}
+
+AVLTree* insertAVL(AVLTree* node, int key) {
+    if (!node) return new AVLTree(key);
+
+    if (key < node->data) {
+        node->left = insertAVL(node->left, key);
+    }
+    else if (key > node->data) {
+        node->right = insertAVL(node->right, key);
+    }
+    else {
+        return node;
+    }
+
+    node->height = 1 + max(getHeight(node->left), getHeight(node->right));
+
+    int balance = getBalance(node);
+    if (balance > 1 && key < node->left->data) {
+        return rightRotate(node);
+    }
+
+    if (balance < -1 && key > node->right->data) {
+        return leftRotate(node);
+    }
+
+    if (balance > 1 && key > node->left->data) {
+        node->left = leftRotate(node->left);
+        return rightRotate(node);
+    }
+
+    if (balance < -1 && key < node->right->data) {
+        node->right = rightRotate(node->right);
+        return leftRotate(node);
+    }
+
+    return node;
+}
+
+AVLTree* searchAVL(AVLTree* root, int key) {
+    if (!root || root->data == key)
+        return root;
+    if (key < root->data)
+        return searchAVL(root->left, key);
+    else
+        return searchAVL(root->right, key);
+}
+
+AVLTree* minValueNode(AVLTree* node) {
+    AVLTree* current = node;
+    while (current->left != nullptr)
+        current = current->left;
+    return current;
+}
+
+AVLTree* deleteAVL(AVLTree* root, int key) {
+    if (!root) return root;
+
+    if (key < root->data) {
+        root->left = deleteAVL(root->left, key);
+    }
+    else if (key > root->data) {
+        root->right = deleteAVL(root->right, key);
+    }
+    else {
+        if (!root->left || !root->right) {
+            AVLTree* temp = root->left ? root->left : root->right;
+            if (!temp) {
+                temp = root;
+                root = nullptr;
+            }
+            else {
+                *root = *temp; 
+            }
+            delete temp;
+        }
+        else {
+            AVLTree* temp = minValueNode(root->right);
+            root->data = temp->data;
+            root->right = deleteAVL(root->right, temp->data);
+        }
+    }
+
+    if (!root) return root;
+
+    root->height = 1 + max(getHeight(root->left), getHeight(root->right));
+    int balance = getBalance(root);
+
+    if (balance > 1 && getBalance(root->left) >= 0) return rightRotate(root);
+    if (balance > 1 && getBalance(root->left) < 0) {
+        root->left = leftRotate(root->left);
+        return rightRotate(root);
+    }
+    if (balance < -1 && getBalance(root->right) <= 0) return leftRotate(root);
+    if (balance < -1 && getBalance(root->right) > 0) {
+        root->right = rightRotate(root->right);
+        return leftRotate(root);
+    }
+    return root;
+}
+
+void printAVLTree(AVLTree* root, int level = 0) {
+    if (root == nullptr) {
+        return;
+    }
+    printAVLTree(root->right, level + 1);
+    cout << setw(level * 4) << "";
+    cout << "--> " << root->data << " (h:" << root->height << ")" << endl;
+    printAVLTree(root->left, level + 1);
+}
+
+void deleteAVLTree(AVLTree* root) {
+    if (root == nullptr) return;
+
+    deleteAVLTree(root->left);
+    deleteAVLTree(root->right);
+    delete root;
+}
+
+// Обходы для АВЛ дерева
+void breadthFirstTraversalAVL(AVLTree* root) {
+    if (!root) return;
+
+    AVLTreeQueue q(100);
+    q.enqueue(root);
+
+    cout << "Обход в ширину: ";
+    while (!q.isEmpty()) {
+        AVLTree* current = q.dequeue();
+        cout << current->data << " ";
+
+        if (current->left) q.enqueue(current->left);
+        if (current->right) q.enqueue(current->right);
+    }
+    cout << endl;
+}
+
+void preorderIterativeAVL(AVLTree* root) {
+    if (!root) return;
+
+    AVLTreeStack stack(100);
+    stack.push(root);
+
+    cout << "Прямой обход: ";
+    while (!stack.isEmpty()) {
+        AVLTree* current = stack.pop();
+        cout << current->data << " ";
+
+        if (current->right) stack.push(current->right);
+        if (current->left) stack.push(current->left);
+    }
+    cout << endl;
+}
+
+void inorderIterativeAVL(AVLTree* root) {
+    if (!root) return;
+
+    AVLTreeStack stack(100);
+    AVLTree* current = root;
+
+    cout << "Симметричный обход: ";
+    while (current || !stack.isEmpty()) {
+        while (current) {
+            stack.push(current);
+            current = current->left;
+        }
+
+        current = stack.pop();
+        cout << current->data << " ";
+        current = current->right;
+    }
+    cout << endl;
+}
+
+void postorderIterativeAVL(AVLTree* root) {
+    if (!root) return;
+
+    AVLTreeStack stack1(100), stack2(100);
+    stack1.push(root);
+
+    cout << "Обратный обход: ";
+    while (!stack1.isEmpty()) {
+        AVLTree* current = stack1.pop();
+        stack2.push(current);
+
+        if (current->left) stack1.push(current->left);
+        if (current->right) stack1.push(current->right);
+    }
+
+    while (!stack2.isEmpty()) {
+        cout << stack2.pop()->data << " ";
+    }
+    cout << endl;
+}
+
 bool isDigit(char c) {
     return c >= '0' && c <= '9';
 }
 
 bool isValidBinaryTreeString(const string& str) {
     int balance = 0;
-    bool expectingNumber = true;
-
-    for (size_t i = 0; i < str.length(); i++) {
-        char c = str[i];
-
-        if (c == ' ') continue;
-
-        if (c == '(') {
-            balance++;
-            expectingNumber = true;
-        }
-        else if (c == ')') {
-            balance--;
-            if (balance < 0) return false;
-            expectingNumber = false;
-        }
-        else if (isDigit(c) || c == '-') {
-            if (!expectingNumber) return false;
-            if (c == '-' && (i + 1 >= str.length() || !isDigit(str[i + 1]))) {
-                return false;
-            }
-            // Пропускаем остальные цифры числа
-            while (i + 1 < str.length() && isDigit(str[i + 1])) {
-                i++;
-            }
-            expectingNumber = false;
-        }
-        else {
-            return false;
-        }
+    for (char c : str) {
+        if (c == '(') balance++;
+        else if (c == ')') balance--;
+        if (balance < 0) return false;
     }
-
     return balance == 0;
 }
 
 BinaryTree* parseBinaryTreeFromString(const string& str, size_t& pos) {
-    // Пропускаем пробелы
     while (pos < str.length() && str[pos] == ' ') pos++;
 
     if (pos >= str.length() || str[pos] != '(') {
         return nullptr;
     }
 
-    pos++; // Пропускаем '('
-
-    // Пропускаем пробелы
+    pos++; 
     while (pos < str.length() && str[pos] == ' ') pos++;
 
-    // Проверяем на пустой узел
     if (pos < str.length() && str[pos] == ')') {
         pos++;
         return nullptr;
     }
 
-    // Читаем число
     string numStr = "";
     bool isNegative = false;
 
@@ -287,13 +512,10 @@ BinaryTree* parseBinaryTreeFromString(const string& str, size_t& pos) {
 
     BinaryTree* node = new BinaryTree(num);
 
-    // Обрабатываем левого потомка
     node->left = parseBinaryTreeFromString(str, pos);
 
-    // Обрабатываем правого потомка
     node->right = parseBinaryTreeFromString(str, pos);
 
-    // Пропускаем пробелы и закрывающую скобку
     while (pos < str.length() && str[pos] == ' ') pos++;
     if (pos < str.length() && str[pos] == ')') {
         pos++;
@@ -333,298 +555,52 @@ BinaryTree* createBinaryTreeFromFile(const string& filename) {
     return root;
 }
 
-// Функции для АВЛ дерева
-
-int getHeight(AVLTree* node) {
-    return node ? node->height : 0;
-}
-
-int max(int a, int b) {
-    return (a > b) ? a : b;
-}
-
-int getBalance(AVLTree* node) {
-    return node ? getHeight(node->left) - getHeight(node->right) : 0;
-}
-
-AVLTree* rightRotate(AVLTree* y) {
-    AVLTree* x = y->left;
-    AVLTree* T2 = x->right;
-
-    x->right = y;
-    y->left = T2;
-
-    y->height = max(getHeight(y->left), getHeight(y->right)) + 1;
-    x->height = max(getHeight(x->left), getHeight(x->right)) + 1;
-
-    return x;
-}
-
-AVLTree* leftRotate(AVLTree* x) {
-    AVLTree* y = x->right;
-    AVLTree* T2 = y->left;
-
-    y->left = x;
-    x->right = T2;
-
-    x->height = max(getHeight(x->left), getHeight(x->right)) + 1;
-    y->height = max(getHeight(y->left), getHeight(y->right)) + 1;
-
-    return y;
-}
-
-AVLTree* insertAVL(AVLTree* root, int key) {
-    if (!root) return new AVLTree(key);
-
-    if (key < root->data) {
-        root->left = insertAVL(root->left, key);
-    }
-    else if (key > root->data) {
-        root->right = insertAVL(root->right, key);
-    }
-    else {
-        return root; // Дубликаты не разрешены
-    }
-
-    root->height = 1 + max(getHeight(root->left), getHeight(root->right));
-
-    int balance = getBalance(root);
-
-    // Left Left Case
-    if (balance > 1 && key < root->left->data) {
-        return rightRotate(root);
-    }
-
-    // Right Right Case
-    if (balance < -1 && key > root->right->data) {
-        return leftRotate(root);
-    }
-
-    // Left Right Case
-    if (balance > 1 && key > root->left->data) {
-        root->left = leftRotate(root->left);
-        return rightRotate(root);
-    }
-
-    // Right Left Case
-    if (balance < -1 && key < root->right->data) {
-        root->right = rightRotate(root->right);
-        return leftRotate(root);
-    }
-
-    return root;
-}
-
-AVLTree* minValueNode(AVLTree* node) {
-    AVLTree* current = node;
-    while (current->left) {
-        current = current->left;
-    }
-    return current;
-}
-
-AVLTree* deleteAVL(AVLTree* root, int key) {
-    if (!root) return root;
-
-    if (key < root->data) {
-        root->left = deleteAVL(root->left, key);
-    }
-    else if (key > root->data) {
-        root->right = deleteAVL(root->right, key);
-    }
-    else {
-        if (!root->left || !root->right) {
-            AVLTree* temp = root->left ? root->left : root->right;
-
-            if (!temp) {
-                temp = root;
-                root = nullptr;
-            }
-            else {
-                *root = *temp;
-            }
-            delete temp;
-        }
-        else {
-            AVLTree* temp = minValueNode(root->right);
-            root->data = temp->data;
-            root->right = deleteAVL(root->right, temp->data);
-        }
-    }
-
-    if (!root) return root;
-
-    root->height = 1 + max(getHeight(root->left), getHeight(root->right));
-
-    int balance = getBalance(root);
-
-    // Left Left Case
-    if (balance > 1 && getBalance(root->left) >= 0) {
-        return rightRotate(root);
-    }
-
-    // Left Right Case
-    if (balance > 1 && getBalance(root->left) < 0) {
-        root->left = leftRotate(root->left);
-        return rightRotate(root);
-    }
-
-    // Right Right Case
-    if (balance < -1 && getBalance(root->right) <= 0) {
-        return leftRotate(root);
-    }
-
-    // Right Left Case
-    if (balance < -1 && getBalance(root->right) > 0) {
-        root->right = rightRotate(root->right);
-        return leftRotate(root);
-    }
-
-    return root;
-}
-
-bool searchAVL(AVLTree* root, int key) {
-    if (!root) return false;
-
-    if (key == root->data) return true;
-    if (key < root->data) return searchAVL(root->left, key);
-    return searchAVL(root->right, key);
-}
-
-// Итеративные обходы для АВЛ дерева
-
-// Прямой обход (КЛП) - итеративный
-void preorderIterativeAVL(AVLTree* root) {
-    if (!root) return;
-
-    AVLTreeStack stack(100);
-    stack.push(root);
-
-    while (!stack.isEmpty()) {
-        AVLTree* current = stack.pop();
-        cout << current->data << " ";
-
-        if (current->right) stack.push(current->right);
-        if (current->left) stack.push(current->left);
-    }
-}
-
-// Центрированный обход (ЛКП) - итеративный
-void inorderIterativeAVL(AVLTree* root) {
-    if (!root) return;
-
-    AVLTreeStack stack(100);
-    AVLTree* current = root;
-
-    while (current || !stack.isEmpty()) {
-        while (current) {
-            stack.push(current);
-            current = current->left;
-        }
-
-        current = stack.pop();
-        cout << current->data << " ";
-        current = current->right;
-    }
-}
-
-// Обратный обход (ЛПК) - итеративный
-void postorderIterativeAVL(AVLTree* root) {
-    if (!root) return;
-
-    AVLTreeStack stack1(100), stack2(100);
-    stack1.push(root);
-
-    while (!stack1.isEmpty()) {
-        AVLTree* current = stack1.pop();
-        stack2.push(current);
-
-        if (current->left) stack1.push(current->left);
-        if (current->right) stack1.push(current->right);
-    }
-
-    while (!stack2.isEmpty()) {
-        cout << stack2.pop()->data << " ";
-    }
-}
-
-// Обход в ширину для АВЛ дерева - итеративный
-void breadthFirstTraversalAVL(AVLTree* root) {
-    if (!root) return;
-
-    AVLTreeQueue q(100);
-    q.enqueue(root);
-
-    while (!q.isEmpty()) {
-        AVLTree* current = q.dequeue();
-        cout << current->data << " ";
-
-        if (current->left) q.enqueue(current->left);
-        if (current->right) q.enqueue(current->right);
-    }
-}
-
-// Вспомогательные функции для вывода деревьев
-void printBinaryTree(BinaryTree* root, int level = 0) {
-    if (!root) return;
-
-    printBinaryTree(root->right, level + 1);
-    cout << string(level * 4, ' ') << root->data << endl;
-    printBinaryTree(root->left, level + 1);
-}
-
-void printAVLTree(AVLTree* root, int level = 0) {
-    if (!root) return;
-
-    printAVLTree(root->right, level + 1);
-    cout << string(level * 4, ' ') << root->data << " (h:" << root->height << ")" << endl;
-    printAVLTree(root->left, level + 1);
-}
-
-// Освобождение памяти
-void deleteBinaryTree(BinaryTree* root) {
-    if (!root) return;
-    deleteBinaryTree(root->left);
-    deleteBinaryTree(root->right);
-    delete root;
-}
-
-void deleteAVLTree(AVLTree* root) {
-    if (!root) return;
-    deleteAVLTree(root->left);
-    deleteAVLTree(root->right);
-    delete root;
-}
-
-// Создание АВЛ дерева из обычного двоичного дерева
 void convertToAVL(BinaryTree* binaryRoot, AVLTree*& avlRoot) {
     if (!binaryRoot) return;
+    vector<int> elements;
+    collectPreOrder(binaryRoot, elements);
 
-    // Обход в ширину обычного дерева и вставка в АВЛ
-    BinaryTreeQueue q(100);
-    q.enqueue(binaryRoot);
-
-    while (!q.isEmpty()) {
-        BinaryTree* current = q.dequeue();
-        avlRoot = insertAVL(avlRoot, current->data);
-
-        if (current->left) q.enqueue(current->left);
-        if (current->right) q.enqueue(current->right);
+    cout << "Элементы в порядке КЛП: ";
+    for (int elem : elements) {
+        cout << elem << " ";
+    }
+    cout << endl;
+    for (int elem : elements) {
+        avlRoot = insertAVL(avlRoot, elem);
     }
 }
 
-// Меню
+bool isValidAVL(AVLTree* root) {
+    if (!root) return true;
+
+    int balance = getBalance(root);
+    if (balance < -1 || balance > 1) {
+        cout << "Нарушен баланс в узле " << root->data << ": balance = " << balance << endl;
+        return false;
+    }
+
+    if (root->left && root->left->data >= root->data) {
+        cout << "Нарушено свойство: " << root->left->data << " >= " << root->data << endl;
+        return false;
+    }
+    if (root->right && root->right->data <= root->data) {
+        cout << "Нарушено свойство: " << root->right->data << " <= " << root->data << endl;
+        return false;
+    }
+
+    return isValidAVL(root->left) && isValidAVL(root->right);
+}
 void displayMenu() {
-    cout << "=== МЕНЮ ДЕРЕВЬЯ ===" << endl;
+    cout << "Лаба 3 - деревья" << endl;
     cout << "1. Загрузить двоичное дерево из файла" << endl;
     cout << "2. Показать двоичное дерево" << endl;
-    cout << "3. Три обхода двоичного дерева в глубину (рекурсивные)" << endl;
-    cout << "4. Создать АВЛ дерево из двоичного" << endl;
-    cout << "5. Показать АВЛ дерево" << endl;
-    cout << "6. Обходы АВЛ дерева (4 способа - итеративные)" << endl;
-    cout << "7. Вставка элемента в АВЛ дерево" << endl;
-    cout << "8. Удаление элемента из АВЛ дерева" << endl;
-    cout << "9. Поиск элемента в АВЛ дереве" << endl;
+    cout << "3. Создать АВЛ дерево из двоичного" << endl;
+    cout << "4. Показать АВЛ дерево" << endl;
+    cout << "5. Обходы АВЛ дерева (4 способа - итеративные)" << endl;
+    cout << "6. Вставка элемента в АВЛ дерево" << endl;
+    cout << "7. Удаление элемента из АВЛ дерева" << endl;
+    cout << "8. Поиск элемента в АВЛ дереве" << endl;
+    cout << "9. Проверить балансировку АВЛ дерева" << endl;
     cout << "0. Выход" << endl;
     cout << "Выберите действие: ";
 }
@@ -658,6 +634,9 @@ int main() {
             if (binaryTree) {
                 cout << "Двоичное дерево:" << endl;
                 printBinaryTree(binaryTree);
+                cout << "Прямой обход в глубину: ";
+                dfsBinaryTree(binaryTree);
+                cout << endl;
             }
             else {
                 cout << "Двоичное дерево не загружено!" << endl;
@@ -667,32 +646,21 @@ int main() {
 
         case 3: {
             if (binaryTree) {
-                cout << "Прямой обход (КЛП): ";
-                preorderTraversalBinary(binaryTree);
-                cout << endl;
-
-                cout << "Центрированный обход (ЛКП): ";
-                inorderTraversalBinary(binaryTree);
-                cout << endl;
-
-                cout << "Обратный обход (ЛПК): ";
-                postorderTraversalBinary(binaryTree);
-                cout << endl;
-            }
-            else {
-                cout << "Двоичное дерево не загружено!" << endl;
-            }
-            break;
-        }
-
-        case 4: {
-            if (binaryTree) {
                 if (avlTree) {
                     deleteAVLTree(avlTree);
                     avlTree = nullptr;
                 }
+
                 convertToAVL(binaryTree, avlTree);
                 cout << "АВЛ дерево успешно создано!" << endl;
+
+                if (isValidAVL(avlTree)) {
+                    cout << "АВЛ дерево корректно!" << endl;
+                }
+                else {
+                    cout << "Ошибка: АВЛ дерево некорректно!" << endl;
+                }
+                checkBalance(avlTree);
             }
             else {
                 cout << "Сначала загрузите двоичное дерево!" << endl;
@@ -700,7 +668,7 @@ int main() {
             break;
         }
 
-        case 5: {
+        case 4: {
             if (avlTree) {
                 cout << "АВЛ дерево:" << endl;
                 printAVLTree(avlTree);
@@ -711,23 +679,27 @@ int main() {
             break;
         }
 
+        case 5: {
+            if (avlTree) {
+                cout << "\n=== ОБХОДЫ АВЛ ДЕРЕВА ===" << endl;
+                breadthFirstTraversalAVL(avlTree);
+                preorderIterativeAVL(avlTree);
+                inorderIterativeAVL(avlTree);
+                postorderIterativeAVL(avlTree);
+            }
+            else {
+                cout << "АВЛ дерево не создано!" << endl;
+            }
+            break;
+        }
+
         case 6: {
             if (avlTree) {
-                cout << "Обход в ширину: ";
-                breadthFirstTraversalAVL(avlTree);
-                cout << endl;
-
-                cout << "Прямой обход (КЛП) - итеративный: ";
-                preorderIterativeAVL(avlTree);
-                cout << endl;
-
-                cout << "Центрированный обход (ЛКП) - итеративный: ";
-                inorderIterativeAVL(avlTree);
-                cout << endl;
-
-                cout << "Обратный обход (ЛПК) - итеративный: ";
-                postorderIterativeAVL(avlTree);
-                cout << endl;
+                cout << "Введите значение для вставки: ";
+                cin >> value;
+                avlTree = insertAVL(avlTree, value);
+                cout << "Элемент вставлен!" << endl;
+                checkBalance(avlTree);
             }
             else {
                 cout << "АВЛ дерево не создано!" << endl;
@@ -737,10 +709,18 @@ int main() {
 
         case 7: {
             if (avlTree) {
-                cout << "Введите значение для вставки: ";
+                cout << "Введите значение для удаления: ";
                 cin >> value;
-                avlTree = insertAVL(avlTree, value);
-                cout << "Элемент вставлен!" << endl;
+
+                AVLTree* found = searchAVL(avlTree, value);
+                if (!found) {
+                    cout << "Элемент " << value << " не найден в дереве!" << endl;
+                }
+                else {
+                    avlTree = deleteAVL(avlTree, value);
+                    cout << "Элемент удален!" << endl;
+                    checkBalance(avlTree);
+                }
             }
             else {
                 cout << "АВЛ дерево не создано!" << endl;
@@ -750,10 +730,14 @@ int main() {
 
         case 8: {
             if (avlTree) {
-                cout << "Введите значение для удаления: ";
+                cout << "Введите значение для поиска: ";
                 cin >> value;
-                avlTree = deleteAVL(avlTree, value);
-                cout << "Элемент удален!" << endl;
+                if (searchAVL(avlTree, value)) {
+                    cout << "Элемент найден!" << endl;
+                }
+                else {
+                    cout << "Элемент не найден!" << endl;
+                }
             }
             else {
                 cout << "АВЛ дерево не создано!" << endl;
@@ -763,14 +747,7 @@ int main() {
 
         case 9: {
             if (avlTree) {
-                cout << "Введите значение для поиска: ";
-                cin >> value;
-                if (searchAVL(avlTree, value)) {
-                    cout << "Элемент найден!" << endl;
-                }
-                else {
-                    cout << "Элемент не найден!" << endl;
-                }
+                checkBalance(avlTree);
             }
             else {
                 cout << "АВЛ дерево не создано!" << endl;
